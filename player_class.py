@@ -1,5 +1,6 @@
-from settings import *
 import pygame
+from settings import *
+from move_validator import *
 
 vec = pygame.math.Vector2
 
@@ -24,10 +25,10 @@ class Player:
             self.on_coin()
             self.on_buff()
            
-        if self.moveable():
+        if Movement.moveable(self):
             if self.stored_direction != None:
                 self.direction = self.stored_direction
-            self.able_to_move = self.can_move()
+            self.able_to_move = Movement.can_move(self)
         
     def grid_to_pix_pos(self):
         self.grid_pos[0] = (self.pix_pos[0] - self.app.cell_width//2)//self.app.cell_width
@@ -46,25 +47,10 @@ class Player:
     def get_pix_pos(self):
         return vec(self.grid_pos[0]*self.app.cell_width + self.app.cell_width//2, 
         self.grid_pos[1]*self.app.cell_height + self.app.cell_height//2)
-    
-    def moveable(self):
-        if int(self.pix_pos.x) % self.app.cell_width == 15:
-            if self.direction == vec(1,0) or self.direction == vec(-1,0) or self.direction == vec(0, 0):
-                return True
 
-        if int(self.pix_pos.y) % self.app.cell_height == 15:
-            if self.direction == vec(0,1) or self.direction == vec(0,-1) or self.direction == vec(0, 0):
-                return True
-    
-    def can_move(self):
-        for wall in self.app.walls:
-            if vec(self.grid_pos+self.direction) == wall:
-                return False
-        return True     
-    
     def on_buff(self):
         if self.grid_pos in self.app.buffs:
-            if self.moveable():
+            if Movement.moveable(self):
                 self.app.buff_timer = 10
                 pygame.time.set_timer(pygame.USEREVENT, 1000)
                 self.app.buffs.remove(self.grid_pos)
@@ -73,7 +59,7 @@ class Player:
 
     def on_coin(self):
         if self.grid_pos in self.app.coins:
-            if self.moveable():
+            if Movement.moveable(self):
                 self.app.coins.remove(self.grid_pos)
                 self.score += 1* self.multiplier
         

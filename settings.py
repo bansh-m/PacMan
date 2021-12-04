@@ -1,9 +1,10 @@
 from pygame.math import Vector2 as vec
 
-# SCREEN SETTINGS
+# SCREEN/SIZE SETTINGS
 WIDTH, HEIGHT = 840, 930
 FPS = 60
 SCORE_POS_X, SCORE_POS_Y = 75, 340
+CELL_WIDTH, CELL_HEIGHT = 30,  30
 
 # COLOUR SETTINGS
 BLACK = (0,0,0)
@@ -18,3 +19,6 @@ START_FONT = 'arial black'
 
 #PLAYER SETTINGS
 PLAYER_START_POS = 0
+
+#DIRECTIONS
+UP, LEFT, DOWN, RIGHT = vec(0, -1), vec(-1, 0), vec(0, 1), vec(1, 0)

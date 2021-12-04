@@ -1,5 +1,6 @@
 import pygame, random
 from settings import*
+from move_validator import *
 
 vec = pygame.math.Vector2
 
@@ -21,29 +22,15 @@ class Enemy:
             self.pix_pos += self.direction * self.speed           
             self.grid_to_pix_pos()
 
-        if self.moveable():
+        if Movement.moveable(self):
             self.move()
             self.set_speed()
-            self.able_to_move = self.can_move()
+            self.able_to_move = Movement.can_move(self)
                 
     def grid_to_pix_pos(self):
         self.grid_pos.x = (self.pix_pos.x - self.app.cell_width//2)//self.app.cell_width
         self.grid_pos.y = (self.pix_pos.y - self.app.cell_height//2)//self.app.cell_height
-
-    def can_move(self):
-        if vec(self.grid_pos + self.direction) in self.app.walls:
-            return False
-        else: return True
-
-    def moveable(self):
-        if int(self.pix_pos.x) % self.app.cell_width == 15:
-            if self.direction == vec(1,0) or self.direction == vec(-1,0) or self.direction == vec(0,0):
-                return True
-        if int(self.pix_pos.y) % self.app.cell_height == 15:
-            if self.direction == vec(0,1) or self.direction == vec(0,-1) or self.direction == vec(0,0):
-                return True 
-        return False
-    
+ 
     def move(self):
         self.get_random_direction()               
 
@@ -65,7 +52,7 @@ class Enemy:
                     break
             self.direction = vec(x_dir, y_dir) 
         else: 
-                while not self.can_move():      
+                while not Movement.can_move(self):      
                     number = random.randint(1,4)
                     if number == 1:
                        x_dir, y_dir = 1, 0

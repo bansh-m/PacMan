@@ -1,6 +1,7 @@
 import pygame, sys, copy
 
 from pygame.constants import USEREVENT
+from cell_class import Cell
 from settings import *
 from player_class import *
 from enemy_class import *
@@ -14,8 +15,8 @@ class App:
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = 'start'
-        self.cell_width = WIDTH//28
-        self.cell_height = HEIGHT//31
+        self.cell_width = CELL_WIDTH
+        self.cell_height = CELL_HEIGHT
         self.p_pos = 0
         self.e_pos = []
         self.walls = []
@@ -24,11 +25,12 @@ class App:
         self.e_zone = []
         self.lives = []
         self.buffs = []
+        self.cells = []
         self.win_lose = None
-        # self.big_coins = []       
-        self.load()
+        # self.load()
         self.player = Player(self, vec(self.p_pos))
         self.make_ememies()
+        self.create_cells()
         self.buff_timer = 0
         self.start_ticks = pygame.time.get_ticks()
 
@@ -41,7 +43,7 @@ class App:
             elif self.state == 'playing':
                 self.playing_events()
                 self.playing_update()
-                self.playing_draw()
+                self.playing_draw1()
             elif self.state == 'game over':
                 if self.win_lose == 'lose':   
                     self.game_over_events()
@@ -72,10 +74,8 @@ class App:
         self.heart = pygame.transform.scale(self.heart, (25, 30))
         self.buff = pygame.image.load('images/buff.png')
         self.buff = pygame.transform.scale(self.buff,(28, 28))
-        # self.coin = pygame.image.load('coin.png')
-        # self.coin = pygame.transform.scale(self.coin, (30, 30))
      
-        #Placing objects in reference to their pos in grid
+        #Placing objects in reference to their pos in maze.txt
         with open("grid.txt", 'r') as file:
             for yidx, line in enumerate(file):
                 for xidx, char in enumerate(line):
@@ -89,11 +89,21 @@ class App:
                         self.e_pos.append(vec(xidx, yidx))
                     elif char == 'L':
                         self.lives.append(vec(xidx, yidx))
-                    # elif char == 'C':
-                    #     self.big_coins.append(vec(xidx, yidx))
                     elif char == 'B':
                         self.buffs.append(vec(xidx, yidx))
+ 
+    def create_cells(self):
+        for x in range(0, 27+1):
+            for y in range(0, 30+1):
+                pos = vec(x, y)
+                self.cells.append(Cell(pos, self))
 
+        for cell in self.cells:
+            cell.cell_connect()
+            cell.get_neighbors()
+            cell.random_state()
+            cell.unrandom_state()
+            
     def make_ememies(self):
         for indx, pos in enumerate(self.e_pos):
             self.enemies.append(Enemy(self, vec(pos), indx))
@@ -104,27 +114,31 @@ class App:
 
         for x in range(31):
             pygame.draw.line(self.screen, GREY, (0, x*self.cell_height), (WIDTH, x*self.cell_height))
-
-        for wall in self.walls:
-            pygame.draw.rect(self.background, (112, 55, 163),
-             (wall.x*self.cell_width, wall.y*self.cell_height, self.cell_width, self.cell_height))
-             
-        for coin in self.coins:
-            pygame.draw.rect(self.background, (157, 241, 230),
-             (coin.x*self.cell_width, coin.y*self.cell_height, self.cell_width, self.cell_height))  
+        
+        # for wall in self.walls:
+        #     pygame.draw.rect(self.background, (112, 55, 163),
+        #      (wall.x*self.cell_width, wall.y*self.cell_height, self.cell_width, self.cell_height)) 
+        # for coin in self.coins:
+        #     pygame.draw.rect(self.background, (157, 241, 230),
+        #      (coin.x*self.cell_width, coin.y*self.cell_height, self.cell_width, self.cell_height))  
 
     def draw_coins(self):
         for coin in self.coins:
             pygame.draw.circle(self.screen, (157, 241, 230), 
             (coin.x*self.cell_width + self.cell_width//2, coin.y*self.cell_height + self.cell_height//2), 5)
 
+    def draw_cells(self):
+        for cell in self.cells:
+            if cell.state == 'wall':
+                pygame.draw.rect(self.screen, (42, 52, 57),
+                (cell.grid_pos.x*self.cell_width, cell.grid_pos.y*self.cell_height, self.cell_width, self.cell_height))
+            else:
+                pygame.draw.circle(self.screen, (157, 241, 230), 
+                (cell.grid_pos.x*self.cell_width + self.cell_width//2, cell.grid_pos.y*self.cell_height + self.cell_height//2), 5)
+
     def draw_buffs(self):
         for buff in self.buffs:
             self.screen.blit(self.buff, (buff.x*self.cell_width, buff.y*self.cell_height)) 
-        
-        # for coin in self.big_coins:
-        #     self.screen.blit(self.coin, (coin.x*self.cell_width + self.cell_width//2, 
-        #     coin.y*self.cell_height + self.cell_height//2))
 
     def remove_life(self):
         self.player.lives -= 1
@@ -217,12 +231,17 @@ class App:
                     enemy.first_move = True
                     enemy.grid_pos = vec(enemy.start_pos)
                     enemy.pix_pos = enemy.get_pix_pos()
-                    enemy.direction *= 0
-
+                    enemy.direction *= 0   
         if len(self.coins) == 0:
             self.win_lose = 'win'
             self.state = "game over"
 
+    def playing_draw1(self):
+        self.screen.fill(BLACK)
+        self.draw_cells()
+        self.draw_grid()
+        pygame.display.update()
+    
     def playing_draw(self): 
         self.screen.blit(self.background, (0,0))
         self.player.draw()
@@ -240,10 +259,8 @@ class App:
             [SCORE_POS_X, SCORE_POS_Y + 60], (255, 255, 255), START_FONT)
         
         self.draw_text('BUFF: ' + str(self.buff_timer), START_TEXT_SIZE - 20, 
-            [SCORE_POS_X, SCORE_POS_Y + 170], (255, 255, 255), START_FONT)
-        
+            [SCORE_POS_X, SCORE_POS_Y + 170], (255, 255, 255), START_FONT)        
         pygame.display.update()
-        # self.draw_grid()
 
 #GAME OVER FUNCTIONS
     def game_over_events(self):
