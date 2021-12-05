@@ -1,20 +1,21 @@
 import pygame, random
 from settings import*
-from move_validator import *
+
 
 vec = pygame.math.Vector2
 
 class Enemy:
-    def __init__(self, app, pos, indx):
+    def __init__(self, app, pos, indx, lvl):
         self.app = app
         self.indx = indx
+        self.lvl = lvl
         self.grid_pos = pos
         self.start_pos = [pos.x, pos.y]
         self.direction = vec(0, 0)
         self.state = "origin"
         self.pix_pos = self.get_pix_pos()
         self.able_to_move = True
-        self.speed = 5
+        self.speed = 0
         self.first_move = True
 
     def update(self):
@@ -22,17 +23,39 @@ class Enemy:
             self.pix_pos += self.direction * self.speed           
             self.grid_to_pix_pos()
 
-        if Movement.moveable(self):
+        if self.moveable():
             self.move()
             self.set_speed()
-            self.able_to_move = Movement.can_move(self)
+            self.able_to_move = self.can_move()
                 
     def grid_to_pix_pos(self):
-        self.grid_pos.x = (self.pix_pos.x - self.app.cell_width//2)//self.app.cell_width
-        self.grid_pos.y = (self.pix_pos.y - self.app.cell_height//2)//self.app.cell_height
- 
+            self.grid_pos.x = (self.pix_pos.x - self.app.cell_width//2)//self.app.cell_width
+            self.grid_pos.y = (self.pix_pos.y - self.app.cell_height//2)//self.app.cell_height
+
     def move(self):
-        self.get_random_direction()               
+        if self.lvl == 'random':
+            self.get_random_direction() 
+
+    def can_move(self):
+        if self.app.map_mode == 'classic':
+            if vec(self.grid_pos + self.direction) in self.app.walls:
+                return False
+            return True   
+        if self.app.map_mode == 'random':
+            for cell in self.app.cells:
+                if cell.grid_pos == vec(self.grid_pos + self.direction):
+                    if cell.state == 'wall':
+                        return False
+                    return True
+               
+    def moveable(self):
+        if int(self.pix_pos.x) % self.app.cell_width == 15:
+            if self.direction == vec(1,0) or self.direction == vec(-1,0) or self.direction == vec(0, 0):
+                return True
+
+        if int(self.pix_pos.y) % self.app.cell_height == 15:
+            if self.direction == vec(0,1) or self.direction == vec(0,-1) or self.direction == vec(0, 0):
+                return True
 
     def get_random_direction(self):
         if self.first_move:
@@ -52,7 +75,7 @@ class Enemy:
                     break
             self.direction = vec(x_dir, y_dir) 
         else: 
-                while not Movement.can_move(self):      
+                while not self.can_move():      
                     number = random.randint(1,4)
                     if number == 1:
                        x_dir, y_dir = 1, 0
@@ -65,8 +88,8 @@ class Enemy:
                     self.direction = vec(x_dir, y_dir)              
 
     def get_pix_pos(self):
-        return vec(self.grid_pos.x*self.app.cell_width + self.app.cell_width//2, 
-        self.grid_pos.y*self.app.cell_height + self.app.cell_height//2)
+            return vec(self.grid_pos.x*self.app.cell_width + self.app.cell_width//2, 
+            self.grid_pos.y*self.app.cell_height + self.app.cell_height//2)
 
     def draw(self):
         pygame.draw.circle(self.app.screen, self.get_colour(), (self.pix_pos.x, self.pix_pos.y), 10)
@@ -80,13 +103,13 @@ class Enemy:
     def get_colour(self):
         if self.state == 'origin':    
             if self.indx == 0:
-                return (82, 0, 104)
+                return PURPLE
             elif self.indx == 1:
-                return (0, 255, 46)
+                return GREEN
             elif self.indx == 2:
-                return (255, 55, 0)
+                return LIGHT_BLUE
             elif self.indx == 3:
-                return (25, 0, 255)
+                return RED
         else:
             return (154, 205, 50)
     

@@ -1,4 +1,5 @@
 from pygame.math import Vector2 as vec
+from colour import Color
 
 # SCREEN/SIZE SETTINGS
 WIDTH, HEIGHT = 840, 930
@@ -8,13 +9,20 @@ CELL_WIDTH, CELL_HEIGHT = 30,  30
 
 # COLOUR SETTINGS
 BLACK = (0,0,0)
-RED = (72, 10, 10)
+RED = (255, 0, 0)
 GREY = (115, 115, 115)
 PLAYER_COLOUR = (255, 199, 0)
+WHITE = (255, 255, 255)
+YELLOW = (255, 221, 0)
+LIGHT_BLUE = (0, 191, 255)
+PURPLE = (191, 0, 255)
+GREEN = (76, 187, 23)
+
+
 
 # FONT SETTINGS 
 END_TEXT_SIZE = 25
-START_TEXT_SIZE = 42
+START_TEXT_SIZE = 42    
 START_FONT = 'arial black'
 
 #PLAYER SETTINGS

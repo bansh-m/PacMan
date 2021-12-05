@@ -4,7 +4,7 @@ from settings import *
 vec = pygame.math.Vector2
 
 class Cell:
-    def __init__(self, pos, app):
+    def __init__(self, pos, app, state = None):
         self.app = app
         self.grid_pos = pos
         self.directions = [UP, LEFT, RIGHT, DOWN]
@@ -13,7 +13,7 @@ class Cell:
         self.right_cell = None
         self.down_cell = None
         self.neighbors = []
-        self.state = None
+        self.state = state
 
     def cell_connect(self):
         for direction in self.directions:
@@ -44,26 +44,23 @@ class Cell:
         if self.down_cell in self.app.cells:
             self.neighbors.append(self.down_cell)
 
-    def random_state(self):  
-        if len(self.neighbors) != 4:
-            self.state = 'wall'
-        else:
-            number = random.randint(1, 2)
-            if number == 1:
+    def set_state(self):
+        if self.state == None:  
+            rand = random.randint(1, 2)
+            if rand == 1:
                 self.state = 'wall'
             else:
                 self.state = 'coin'
-
-
-    def unrandom_state(self):
+    def shuffle_state(self):
         neighbor_wall = 0       
         random.shuffle(self.neighbors)
         for neighbor in self.neighbors:
-            if len(neighbor.neighbors) == 4:
+            if neighbor not in self.app.stable_cells:
                 if neighbor.state == 'wall':
-                        neighbor_wall += 1 
+                    neighbor_wall += 1 
                 if neighbor_wall > 1:
                     neighbor.state = 'coin'
                     neighbor_wall -= 1
+                
 
             
