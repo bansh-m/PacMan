@@ -17,17 +17,17 @@ class Player:
         self.multiplier = 1
         self.routes = []
         self.alg = 'bfs'
-        self.came_from = {}
+        
         
     def update(self):
-        self.get_path()
+        if self.app.path_finder:
+            self.get_path()
         if self.able_to_move: 
             self.pix_pos += self.direction*self.speed
-            self.grid_to_pix_pos()
             self.on_coin()
             self.on_buff()
-            
         if self.moveable():
+            self.grid_to_pix_pos()
             if self.stored_direction != None:
                 self.direction = self.stored_direction
             self.able_to_move = self.can_move()
@@ -36,15 +36,12 @@ class Player:
         if self.alg == 'bfs':
             self.alg = 'dfs'
             print('dfs')
-            return
-        if self.alg == 'dfs': 
+        elif self.alg == 'dfs': 
             self.alg = 'ucs'
             print('ucs')
-            return
-        if self.alg == 'ucs': 
+        elif self.alg == 'ucs': 
             self.alg = 'bfs'
             print('bfs')
-            return
         
 #DFS
     def dfs(self, start, target):
@@ -88,6 +85,7 @@ class Player:
             current = came_from[current]
             path.append(current)
         return path
+        
 #BFS
     def bfs(self, start, target):     
         frontier = [start]
@@ -110,33 +108,31 @@ class Player:
             current = came_from[current]
             path.append(current)
         return path
+
 #POS FUNCTIONS   
     def grid_to_pix_pos(self):
         self.grid_pos[0] = (self.pix_pos[0] - self.app.cell_width//2)//self.app.cell_width
         self.grid_pos[1] = (self.pix_pos[1] - self.app.cell_height//2)//self.app.cell_height
+    
     def get_pix_pos(self):
         return vec(self.grid_pos[0]*self.app.cell_width + self.app.cell_width//2, 
         self.grid_pos[1]*self.app.cell_height + self.app.cell_height//2)
+
 #DRAW FUNCTIONS
     def draw(self):
         pygame.draw.circle(self.app.screen, PLAYER_COLOUR, (self.pix_pos.x, self.pix_pos.y), self.app.cell_width//2-3)
-        for life in self.app.lives:
-            self.app.screen.blit(self.app.heart, (life.x*self.app.cell_width + self.app.cell_width//2, 
-            life.y*self.app.cell_height + self.app.cell_height//2))
-       
-        for route in self.routes:
-                if route[1] == 0:
-                    colour = PURPLE
-                elif route[1] == 1:
-                    colour = GREEN
-                elif route[1]== 2:
-                    colour = LIGHT_BLUE
-                elif route[1] == 3:
-                    colour = RED
+        if self.app.map_mode == 'classic':
+            for life in self.app.lives:
+                self.app.screen.blit(self.app.heart, (life.x*self.app.cell_width + self.app.cell_width//2, 
+                life.y*self.app.cell_height + self.app.cell_height//2))
+        if self.app.path_finder:
+            for route in self.routes:
+                colour = route[1]
                 for cell in route[0]:
                     pygame.draw.circle(self.app.screen, colour,
-                    (cell.grid_pos.x*CELL_WIDTH + CELL_WIDTH//2, 
-                    cell.grid_pos.y*CELL_HEIGHT + CELL_HEIGHT//2), 5)
+                    (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
+                    cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)
+
 # MOVE FUNCTIONS
     def move(self, direction):
         self.stored_direction = direction
@@ -147,20 +143,15 @@ class Player:
         for enemy in self.app.enemies:
             target = next(cell for cell in self.app.cells if cell.grid_pos == enemy.grid_pos)
             if self.alg == 'bfs':                    
-                self.routes.append([self.bfs(start, target), enemy.indx])
+                self.routes.append([self.bfs(start, target), enemy.colour])
             elif self.alg == 'dfs':
                 path = self.dfs(start, target)
-                self.routes.append([path, enemy.indx])
+                self.routes.append([path, enemy.colour])
             elif self.alg == 'ucs':                    
-                self.routes.append([self.usc(start, target), enemy.indx])
+                self.routes.append([self.usc(start, target), enemy.colour])
                 
-    def find_shortest(self, path):
-        if path is not None:
-            path = min(path, key=len, default=None)
-            return path
-
     def can_move(self):
-        if self.app.map_mode == 'classic':
+        if self.app.map_mode == 'classic' or 'shining':
             if vec(self.grid_pos + self.direction) in self.app.walls:
                 return False
             return True   
@@ -172,11 +163,11 @@ class Player:
                     return True
             
     def moveable(self):
-        if int(self.pix_pos.x) % self.app.cell_width == 15:
+        if int(self.pix_pos.x) % self.app.cell_width == self.app.cell_width//2:
             if self.direction == vec(1,0) or self.direction == vec(-1,0) or self.direction == vec(0, 0):
                 return True
 
-        if int(self.pix_pos.y) % self.app.cell_height == 15:
+        if int(self.pix_pos.y) % self.app.cell_height == self.app.cell_height//2:
             if self.direction == vec(0,1) or self.direction == vec(0,-1) or self.direction == vec(0, 0):
                 return True
 

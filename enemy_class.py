@@ -5,7 +5,7 @@ from settings import*
 vec = pygame.math.Vector2
 
 class Enemy:
-    def __init__(self, app, pos, indx, lvl):
+    def __init__(self, app, pos, indx, lvl = 'random'):
         self.app = app
         self.indx = indx
         self.lvl = lvl
@@ -17,13 +17,14 @@ class Enemy:
         self.able_to_move = True
         self.speed = 0
         self.first_move = True
+        self.colour = self.get_colour()
 
     def update(self):
         if self.able_to_move:
             self.pix_pos += self.direction * self.speed           
-            self.grid_to_pix_pos()
 
         if self.moveable():
+            self.grid_to_pix_pos()
             self.move()
             self.set_speed()
             self.able_to_move = self.can_move()
@@ -37,7 +38,7 @@ class Enemy:
             self.get_random_direction() 
 
     def can_move(self):
-        if self.app.map_mode == 'classic':
+        if self.app.map_mode == 'classic' or 'shining':
             if vec(self.grid_pos + self.direction) in self.app.walls:
                 return False
             return True   
@@ -49,11 +50,11 @@ class Enemy:
                     return True
                
     def moveable(self):
-        if int(self.pix_pos.x) % self.app.cell_width == 15:
+        if int(self.pix_pos.x) % self.app.cell_width == self.app.cell_width//2:
             if self.direction == vec(1,0) or self.direction == vec(-1,0) or self.direction == vec(0, 0):
                 return True
 
-        if int(self.pix_pos.y) % self.app.cell_height == 15:
+        if int(self.pix_pos.y) % self.app.cell_height == self.app.cell_height//2:
             if self.direction == vec(0,1) or self.direction == vec(0,-1) or self.direction == vec(0, 0):
                 return True
 
@@ -92,13 +93,13 @@ class Enemy:
             self.grid_pos.y*self.app.cell_height + self.app.cell_height//2)
 
     def draw(self):
-        pygame.draw.circle(self.app.screen, self.get_colour(), (self.pix_pos.x, self.pix_pos.y), 10)
+        pygame.draw.circle(self.app.screen, self.colour, (self.pix_pos.x, self.pix_pos.y), self.app.cell_width//2-3)
 
     def set_speed(self):
         if self.state == 'eatable':
             self.speed = 3
         else:
-            self.speed = 5
+            self.speed = 3
         
     def get_colour(self):
         if self.state == 'origin':    

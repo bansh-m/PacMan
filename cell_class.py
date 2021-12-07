@@ -21,28 +21,32 @@ class Cell:
                 for cell in self.app.cells:
                     if self.grid_pos + UP == cell.grid_pos:
                         self.up_cell = cell
+                        self.neighbors.append(self.up_cell)
             if direction == LEFT:
                 for cell in self.app.cells:
                     if self.grid_pos + LEFT == cell.grid_pos:
                         self.left_cell = cell
+                        self.neighbors.append(self.left_cell)
             if direction == RIGHT:
                 for cell in self.app.cells:
                     if self.grid_pos + RIGHT == cell.grid_pos:
                         self.right_cell = cell
+                        self.neighbors.append(self.right_cell)
             if direction == DOWN:
                 for cell in self.app.cells:
                     if self.grid_pos + DOWN == cell.grid_pos:
                         self.down_cell = cell
+                        self.neighbors.append(self.down_cell)
 
     def get_neighbors(self):
-        if self.left_cell in self.app.cells:
-            self.neighbors.append(self.left_cell)
-        if self.up_cell in self.app.cells:
-            self.neighbors.append(self.up_cell)
-        if self.right_cell in self.app.cells:
-            self.neighbors.append(self.right_cell)
-        if self.down_cell in self.app.cells:
-            self.neighbors.append(self.down_cell)
+        if self.left_cell != None:
+            return self.left_cell
+        if self.up_cell != None:
+            return self.up_cell
+        if self.right_cell != None:
+            return self.right_cell
+        if self.down_cell != None:
+            return self.down_cell
 
     def return_neighbors(self):
         return self.neighbors
