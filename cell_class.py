@@ -44,8 +44,11 @@ class Cell:
         if self.down_cell in self.app.cells:
             self.neighbors.append(self.down_cell)
 
+    def return_neighbors(self):
+        return self.neighbors
+
     def set_state(self):
-        if self.state == None:  
+        if self.state == None:
             rand = random.randint(1, 2)
             if rand == 1:
                 self.state = 'wall'
@@ -57,7 +60,7 @@ class Cell:
         for neighbor in self.neighbors:
             if neighbor not in self.app.stable_cells:
                 if neighbor.state == 'wall':
-                    neighbor_wall += 1 
+                    neighbor_wall += 1
                 if neighbor_wall > 1:
                     neighbor.state = 'coin'
                     neighbor_wall -= 1

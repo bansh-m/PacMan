@@ -75,17 +75,17 @@ class Enemy:
                     break
             self.direction = vec(x_dir, y_dir) 
         else: 
-                while not self.can_move():      
-                    number = random.randint(1,4)
-                    if number == 1:
-                       x_dir, y_dir = 1, 0
-                    elif number == 2:
-                        x_dir, y_dir = 0, 1
-                    elif number == 3:
-                        x_dir, y_dir = -1, 0
-                    else:
-                        x_dir, y_dir = 0, -1                        
-                    self.direction = vec(x_dir, y_dir)              
+            if not self.can_move():      
+                number = random.randint(1,4)
+                if number == 1:
+                   x_dir, y_dir = 1, 0
+                elif number == 2:
+                    x_dir, y_dir = 0, 1
+                elif number == 3:
+                    x_dir, y_dir = -1, 0
+                else:
+                    x_dir, y_dir = 0, -1                        
+                self.direction = vec(x_dir, y_dir)              
 
     def get_pix_pos(self):
             return vec(self.grid_pos.x*self.app.cell_width + self.app.cell_width//2, 

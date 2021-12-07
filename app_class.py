@@ -37,7 +37,6 @@ class App:
         self.enemy_mod = None 
         self.map_mode = None
 
-
     def run(self):
         while self.running:
             if self.state == 'start':
@@ -127,15 +126,14 @@ class App:
             cell.get_neighbors()
             cell.set_state()
             cell.shuffle_state()
-            if cell.grid_pos == vec(13, 14):
-                if cell.state != 'wall':
-                    self.p_pos = cell.grid_pos
-                else:
-                    for neighbor in cell.neighbors:
-                        if neighbor.state == 'coin':
-                            self.p_pos = neighbor.grid_pos
-                            break
-        
+        cell = next(cell for cell in self.cells if cell.grid_pos == vec(13, 14))
+        if cell.state == 'wall':
+            for neighbor in cell.neighbors:
+                if neighbor.state == 'coin':
+                    self.p_pos = neighbor.grid_pos
+                    break
+        else: self.p_pos = cell.grid_pos
+
     def make_ememies(self):
         if self.enemy_mod == 'random' and self.map_mode == 'classic':
             for indx, pos in enumerate(self.e_pos):
@@ -170,9 +168,10 @@ class App:
             if cell.state == 'wall':
                 pygame.draw.rect(self.screen, (51, 51, 153),
                 (cell.grid_pos.x*self.cell_width, cell.grid_pos.y*self.cell_height, 28, 28))
-            elif cell.state == 'coin':
-                pygame.draw.circle(self.screen, (157, 241, 230), 
-                (cell.grid_pos.x*self.cell_width + self.cell_width//2, cell.grid_pos.y*self.cell_height + self.cell_height//2), 4)
+
+            # elif cell.state == 'coin':
+            #     pygame.draw.circle(self.screen, (157, 241, 230), 
+            #     (cell.grid_pos.x*self.cell_width + self.cell_width//2, cell.grid_pos.y*self.cell_height + self.cell_height//2), 4)
 
     def draw_buffs(self):
         for buff in self.buffs:
@@ -272,6 +271,8 @@ class App:
                     self.player.move(vec(0, -1))
                 if event.key == pygame.K_DOWN:
                     self.player.move(vec(0, 1))
+                if event.key == pygame.K_z:
+                    self.player.set_alg()
             if event.type == pygame.USEREVENT:
                 self.buff_timer -= 1
                 if self.buff_timer == 0:
@@ -320,9 +321,9 @@ class App:
         elif self.map_mode == 'random':
             self.screen.fill(BLACK)
             self.draw_cells()
+            self.player.draw()
             for enemy in self.enemies:
                 enemy.draw() 
-            self.player.draw()
             # self.draw_grid()    
         pygame.display.update()
 
