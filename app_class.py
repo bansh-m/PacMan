@@ -159,9 +159,14 @@ class App:
                 self.enemies.append(Enemy(self, vec(pos), indx))
         
         elif self.map_mode == 'random':
-            e_pos = [vec(1, 1), vec(26, 1), vec(1, 29), vec(26, 29)]
-            for indx, pos in enumerate(e_pos):
-                self.enemies.append(Enemy(self, vec(pos), indx))
+            if self.enemy_mode == 'random': 
+                e_pos = [vec(1, 1), vec(26, 1), vec(1, 29), vec(26, 29)]
+                for indx, pos in enumerate(e_pos):
+                    self.enemies.append(Enemy(self, vec(pos), indx))
+            elif self.enemy_mode == 'smart':
+                e_pos = [vec(1, 1), vec(26, 1), vec(1, 29), vec(26, 29)]
+                for indx, pos in enumerate(e_pos):
+                    self.enemies.append(Enemy(self, vec(pos), indx, 'smart'))
 
     def draw_grid(self):
         for x in range(50):

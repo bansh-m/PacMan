@@ -5,10 +5,10 @@ from settings import*
 vec = pygame.math.Vector2
 
 class Enemy:
-    def __init__(self, app, pos, indx):
+    def __init__(self, app, pos, indx, lvl = 'random'):
         self.app = app
         self.indx = indx
-        self.lvl = 'random'
+        self.lvl = lvl
         self.grid_pos = pos
         self.start_pos = [pos.x, pos.y]
         self.direction = vec(0, 0)
@@ -18,6 +18,7 @@ class Enemy:
         self.speed = 0
         self.first_move = True
         self.colour = self.get_colour()
+        self.path = []
 
     def update(self):
         if self.able_to_move:
@@ -33,9 +34,44 @@ class Enemy:
             self.grid_pos.x = (self.pix_pos.x - self.app.cell_width//2)//self.app.cell_width
             self.grid_pos.y = (self.pix_pos.y - self.app.cell_height//2)//self.app.cell_height
 
+    def bfs(self, start, target):     
+        frontier = [start]
+        came_from = {}
+        came_from[start] = None
+        while frontier:
+            current = frontier[0]
+            frontier.remove(frontier[0])
+            if current == target: 
+                break           
+            else:
+                for neighbor in current.neighbors:
+                    if neighbor not in came_from:
+                        if neighbor.state != 'wall':
+                            frontier.append(neighbor)
+                            came_from[neighbor] = current
+        current = target 
+        path = [current]
+        while current != start: 
+            current = came_from[current]    
+            self.path.append(current)
+        self.path.pop()
+
+    def curr_cell(self):
+        for cell in self.app.cells:
+            if cell.grid_pos == self.grid_pos:
+                return cell
+
+    def get_bfs_direction(self):
+        self.path.clear()
+        self.bfs(self.curr_cell(), self.app.player.curr_cell())
+        self.direction = self.path.pop().grid_pos - self.grid_pos
+        
+
     def move(self):
         if self.lvl == 'random':
-            self.get_random_direction() 
+            self.get_random_direction()
+        elif self.lvl == 'smart':
+            self.get_bfs_direction()
 
     def can_move(self):
         if self.app.map_mode == 'classic':
@@ -100,6 +136,13 @@ class Enemy:
 
     def draw(self):
         pygame.draw.circle(self.app.screen, self.get_colour(), (self.pix_pos.x, self.pix_pos.y), self.app.cell_width//2-3)
+
+        if self.lvl == 'smart':
+            if len(self.path) != 0:    
+                for cell in self.path:
+                    pygame.draw.circle(self.app.screen, self.get_colour(),
+                        (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
+                        cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)
 
     def set_speed(self):
         if self.state == 'eatable':

@@ -180,8 +180,8 @@ class Player:
         if self.alg == 'a*':
             if len(self.routes) == 0:
                 self.random_target()
-                self.routes.append(self.a_star(self.curr_cell(), self.targ))
-                self.routes.pop()
+                self.a_star(self.curr_cell(), self.targ)
+                # self.routes.pop()
           
         elif self.alg != 'a*':
             self.routes.clear()
@@ -259,7 +259,6 @@ class Player:
                     pygame.draw.circle(self.app.screen, RED,
                         (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
                         cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)
-            else: return
 
         else: 
             for route in self.routes:
