@@ -35,8 +35,8 @@ class App:
         self.start_ticks = pygame.time.get_ticks()
         self.current_text_pos = 0
         self.enemy_mode = 'random'
-        self.map_mode = 'classic'
-        self.path_finder = False
+        self.map_mode = 'random'
+        self.alg = None
 
     def run(self):
         while self.running:
@@ -80,7 +80,7 @@ class App:
         if pos[0] <= cursor_posx <= pos[0] + text_size[0] and pos[1] <= cursor_posy <= pos[1] + text_size[1]:
             self.current_text_pos = id
             return True
-        else: return False
+        return False
 
     def load(self):
         self.background = pygame.image.load('images/maze.png')
@@ -91,7 +91,7 @@ class App:
         self.buff = pygame.transform.scale(self.buff,(28, 28))
      
         if self.map_mode == 'shining':
-            with open("shining_maze.txt", 'r') as file:
+            with open("mazes/shining_maze.txt", 'r') as file:
                  for yidx, line in enumerate(file):
                     for xidx, char in enumerate(line):
                         if char == "1":
@@ -104,7 +104,7 @@ class App:
                             self.e_pos.append(vec(xidx, yidx))
 
         elif self.map_mode == 'random':
-            with open("rand_grid.txt", 'r') as file:
+            with open("mazes/rand_grid.txt", 'r') as file:
                 for yidx, line in enumerate(file):
                     for xidx, char in enumerate(line):
                         if char == "1":
@@ -113,7 +113,7 @@ class App:
                             self.stable_cells.append(Cell(vec(xidx, yidx), self, 'coin'))
         
         elif self.map_mode == 'classic':
-            with open("grid.txt", 'r') as file:
+            with open("mazes/grid.txt", 'r') as file:
                 for yidx, line in enumerate(file):
                     for xidx, char in enumerate(line):
                         if char == "1":
@@ -137,6 +137,7 @@ class App:
         self.cells.extend(self.stable_cells) 
         for cell in self.cells:
             cell.cell_connect()
+            # cell.get_neighbors()
             cell.set_state()
             cell.shuffle_state()
             if cell.grid_pos == vec(13, 14):
@@ -149,14 +150,18 @@ class App:
                             break
     
     def make_ememies(self):
-        if self.enemy_mode == 'random' and self.map_mode == 'classic' or 'shining':
+        if self.map_mode == 'classic':
             for indx, pos in enumerate(self.e_pos):
-                self.enemies.append(Enemy(self, vec(pos), indx, 'random'))
+                self.enemies.append(Enemy(self, vec(pos), indx))
+
+        elif self.map_mode == 'shining':
+            for indx, pos in enumerate(self.e_pos):
+                self.enemies.append(Enemy(self, vec(pos), indx))
         
-        elif self.enemy_mode == 'random' or 'smart' and self.map_mode == 'random':
+        elif self.map_mode == 'random':
             e_pos = [vec(1, 1), vec(26, 1), vec(1, 29), vec(26, 29)]
             for indx, pos in enumerate(e_pos):
-                self.enemies.append(Enemy(self, vec(pos), indx, 'random'))
+                self.enemies.append(Enemy(self, vec(pos), indx))
 
     def draw_grid(self):
         for x in range(50):
@@ -172,7 +177,12 @@ class App:
                 pygame.draw.rect(self.screen, (1, 50, 32),
                 (wall.x*SHINING_CELL_WIDTH, wall.y*SHINING_CELL_HEIGHT, 16, 16))
 
-        if self.map_mode == 'random':
+        elif self.map_mode == 'classic':
+            for wall in self.walls:
+                pygame.draw.rect(self.screen, (145, 163, 176),
+                (wall.x*CELL_WIDTH, wall.y*CELL_HEIGHT, 28, 28))
+
+        elif self.map_mode == 'random':
             for cell in self.cells:
                 if cell.state == 'wall':
                     pygame.draw.rect(self.screen, (51, 51, 153),
@@ -184,12 +194,12 @@ class App:
                 pygame.draw.circle(self.screen, (157, 241, 230), 
                 (coin.x*self.cell_width + self.cell_width//2, coin.y*self.cell_height + self.cell_height//2), 5)
 
-        if self.map_mode == 'shining':
+        elif self.map_mode == 'shining':
             for coin in self.coins:
                 pygame.draw.circle(self.screen, (157, 241, 230), 
                 (coin.x*SHINING_CELL_WIDTH + SHINING_CELL_WIDTH//2, coin.y*SHINING_CELL_WIDTH + SHINING_CELL_HEIGHT//2), 5)
 
-        if self.map_mode == 'random':
+        elif self.map_mode == 'random':
             for cell in self.cells:
                 if cell.state == 'coin':
                     pygame.draw.circle(self.screen, (157, 241, 230), 
@@ -249,7 +259,7 @@ class App:
                 if self.map_mode == 'random':
                     self.create_cells()
                 self.make_ememies()               
-                self.player = Player(self, vec(self.p_pos))
+                self.player = Player(self, vec(self.p_pos), self.alg)
                 self.state = 'playing'
 
             if event.type == pygame.MOUSEBUTTONDOWN and self.on_text:
@@ -258,7 +268,7 @@ class App:
                     if self.map_mode == 'random':
                         self.create_cells()
                     self.make_ememies()               
-                    self.player = Player(self, vec(self.p_pos))
+                    self.player = Player(self, vec(self.p_pos), self.alg)
                     self.state = 'playing'
                 elif self.current_text_pos == 'classic_map':
                     self.map_mode = 'classic'
@@ -267,13 +277,15 @@ class App:
                 elif self.current_text_pos == 'random_map':
                     self.map_mode = 'random'
                 elif self.current_text_pos == 'path_finder':
-                    self.path_finder = True
+                    self.alg = 'bfs'
                 elif self.current_text_pos == 'smart_enemy':
                     self.enemy_mode = 'smart'
                 elif self.current_text_pos == 'shining_map':
                     self.cell_width = SHINING_CELL_WIDTH
                     self.cell_height = SHINING_CELL_HEIGHT
                     self.map_mode = 'shining'
+                elif self.current_text_pos == 'a*':
+                    self.alg = 'a*'
                     
     def start_update(self):
         pass
@@ -290,6 +302,7 @@ class App:
         self.draw_text('SHINING', START_TEXT_SIZE - 20, [PLAYING_WIDTH//4, PLAYING_HEIGHT//2 + 190], GREY, START_FONT, True, 'shining_map')
         self.draw_text('SMART', START_TEXT_SIZE - 20, [PLAYING_WIDTH -  PLAYING_WIDTH/4, PLAYING_HEIGHT//2 + 145], GREY, START_FONT, True, 'smart_enemy')
         self.draw_text('BFS/DFS/UCS', START_TEXT_SIZE - 25, [PLAYING_WIDTH//2, PLAYING_HEIGHT//2 + 145], GREY, START_FONT, True, 'path_finder')
+        self.draw_text('A*', START_TEXT_SIZE - 25, [PLAYING_WIDTH//2, PLAYING_HEIGHT//2 + 190], GREY, START_FONT, True, 'a*')
         pygame.display.update()    
 
 #PLAYING FUNCTIONS
@@ -338,8 +351,9 @@ class App:
 
     def playing_draw(self): 
         if self.map_mode == 'classic':
-            self.screen.blit(self.background, (0,0))
+            self.screen.fill(BLACK)
             self.player.draw()
+            self.draw_walls()
             self.draw_coins()
             self.draw_buffs()
             for enemy in self.enemies:
@@ -351,19 +365,16 @@ class App:
             self.draw_text('X' + str(self.player.multiplier), START_TEXT_SIZE - 20, 
                 [SCORE_POS_X, SCORE_POS_Y + 30], (255, 255, 255), START_FONT, False)
 
-            # self.draw_text('TIME: ' + str(int(self.seconds)), START_TEXT_SIZE - 20, 
-            #     [SCORE_POS_X, SCORE_POS_Y + 60], (255, 255, 255), START_FONT, False)
-
             self.draw_text('BUFF: ' + str(self.buff_timer), START_TEXT_SIZE - 20, 
                 [SCORE_POS_X, SCORE_POS_Y + 170], (255, 255, 255), START_FONT, False)    
 
         elif self.map_mode == 'random':
             self.screen.fill(BLACK)
-            self.draw_walls()
-            # self.draw_coins()
             self.player.draw()
+            self.draw_walls()
             for enemy in self.enemies:
                 enemy.draw()
+            # self.draw_coins()
 
         elif self.map_mode == 'shining':
             self.screen = pygame.display.set_mode((SHINING_MAZE_WIDTH, SHINING_MAZE_HEIGHT))

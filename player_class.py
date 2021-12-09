@@ -1,10 +1,10 @@
-import pygame
+import pygame, random
 from settings import *
 
 vec = pygame.math.Vector2
 
 class Player:
-    def __init__(self, app, pos):
+    def __init__(self, app, pos, alg = 'bfs'):
         self.app = app
         self.grid_pos = [pos.x, pos.y]
         self.pix_pos = self.get_pix_pos()
@@ -16,18 +16,21 @@ class Player:
         self.score = 0
         self.multiplier = 1
         self.routes = []
-        self.alg = 'bfs'
-        
+        self.alg = alg
+        self.targ = self.curr_cell()
         
     def update(self):
-        if self.app.path_finder:
+        if self.alg != None:
             self.get_path()
         if self.able_to_move: 
             self.pix_pos += self.direction*self.speed
+            self.grid_to_pix_pos()
             self.on_coin()
             self.on_buff()
         if self.moveable():
-            self.grid_to_pix_pos()
+            if self.alg == 'a*':
+                if self.routes:    
+                    self.stored_direction = self.routes.pop().grid_pos - self.grid_pos
             if self.stored_direction != None:
                 self.direction = self.stored_direction
             self.able_to_move = self.can_move()
@@ -42,7 +45,7 @@ class Player:
         elif self.alg == 'ucs': 
             self.alg = 'bfs'
             print('bfs')
-        
+
 #DFS
     def dfs(self, start, target):
         stack = [(start, [start])]
@@ -109,6 +112,38 @@ class Player:
             path.append(current)
         return path
 
+#A* 
+    def heuristic(self, target, neighbor):    
+        return abs(target.grid_pos.x - neighbor.grid_pos.x) + abs(target.grid_pos.y - neighbor.grid_pos.y)
+
+    def a_star(self, start, target):
+        frontier = [(start, 0)]
+        came_from = {}
+        cost_so_far = {}
+        came_from[start] = None
+        cost_so_far[start] = 0
+
+        while frontier:
+            (current, cost) = frontier.pop(0)
+            if current == target:
+              break
+            for neighbor in current.neighbors:
+                new_cost = cost
+                if neighbor in cost_so_far:
+                    new_cost = cost + cost_so_far[neighbor]
+                elif neighbor not in cost_so_far or new_cost < cost_so_far[neighbor]:   
+                    cost_so_far[neighbor] = new_cost
+                    if neighbor.state != 'wall':
+                        priority = new_cost + self.heuristic(target, neighbor)
+                        frontier.append((neighbor, priority))
+                        came_from[neighbor] = current
+        current = target 
+        path = [current]
+        self.routes.append(target)
+        while current != start:
+            current = came_from[current]
+            self.routes.append(current)
+
 #POS FUNCTIONS   
     def grid_to_pix_pos(self):
         self.grid_pos[0] = (self.pix_pos[0] - self.app.cell_width//2)//self.app.cell_width
@@ -118,44 +153,59 @@ class Player:
         return vec(self.grid_pos[0]*self.app.cell_width + self.app.cell_width//2, 
         self.grid_pos[1]*self.app.cell_height + self.app.cell_height//2)
 
-#DRAW FUNCTIONS
-    def draw(self):
-        pygame.draw.circle(self.app.screen, PLAYER_COLOUR, (self.pix_pos.x, self.pix_pos.y), self.app.cell_width//2-3)
-        if self.app.map_mode == 'classic':
-            for life in self.app.lives:
-                self.app.screen.blit(self.app.heart, (life.x*self.app.cell_width + self.app.cell_width//2, 
-                life.y*self.app.cell_height + self.app.cell_height//2))
-        if self.app.path_finder:
-            for route in self.routes:
-                colour = route[1]
-                for cell in route[0]:
-                    pygame.draw.circle(self.app.screen, colour,
-                    (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
-                    cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)
-
 # MOVE FUNCTIONS
     def move(self, direction):
         self.stored_direction = direction
-    
+
+    def random_target(self):
+        while True:
+            rand_target = random.choice(self.app.cells) 
+            if rand_target.state == 'coin':
+                self.targ = rand_target
+                return
+            
+    def on_target(self):
+        if self.moveable():
+            if self.grid_pos == self.targ.grid_pos:
+                return True
+            return False
+
+    def curr_cell(self):
+        for cell in self.app.cells:
+            if cell.grid_pos == self.grid_pos:
+                return cell
+
     def get_path(self):
-        self.routes.clear()
-        start = next(cell for cell in self.app.cells if cell.grid_pos == self.grid_pos)  
-        for enemy in self.app.enemies:
-            target = next(cell for cell in self.app.cells if cell.grid_pos == enemy.grid_pos)
-            if self.alg == 'bfs':                    
-                self.routes.append([self.bfs(start, target), enemy.colour])
-            elif self.alg == 'dfs':
-                path = self.dfs(start, target)
-                self.routes.append([path, enemy.colour])
-            elif self.alg == 'ucs':                    
-                self.routes.append([self.usc(start, target), enemy.colour])
-                
+        start = next(cell for cell in self.app.cells if cell.grid_pos == self.grid_pos)
+        if self.alg == 'a*':
+            if len(self.routes) == 0:
+                self.random_target()
+                self.routes.append(self.a_star(self.curr_cell(), self.targ))
+                self.routes.pop()
+          
+        elif self.alg != 'a*':
+            self.routes.clear()
+            for enemy in self.app.enemies:
+                target = next(cell for cell in self.app.cells if cell.grid_pos == enemy.grid_pos)
+                if self.alg == 'bfs':                    
+                    self.routes.append([self.bfs(start, target), enemy.colour])
+                elif self.alg == 'dfs':
+                    self.routes.append([self.dfs(start, target), enemy.colour])
+                elif self.alg == 'ucs':                    
+                    self.routes.append([self.usc(start, target), enemy.colour])
+
     def can_move(self):
-        if self.app.map_mode == 'classic' or 'shining':
+        if self.app.map_mode == 'classic':
             if vec(self.grid_pos + self.direction) in self.app.walls:
                 return False
             return True   
-        if self.app.map_mode == 'random':
+
+        if self.app.map_mode == 'shining':
+            if vec(self.grid_pos + self.direction) in self.app.walls:
+                return False
+            return True
+        
+        elif self.app.map_mode == 'random':
             for cell in self.app.cells:
                 if cell.grid_pos == vec(self.grid_pos + self.direction):
                     if cell.state == 'wall':
@@ -172,13 +222,14 @@ class Player:
                 return True
 
     def on_buff(self):
-        if self.grid_pos in self.app.buffs:
-            if self.moveable():
-                self.app.buff_timer = 10
-                pygame.time.set_timer(pygame.USEREVENT, 1000)
-                self.app.buffs.remove(self.grid_pos)
-                for enemy in self.app.enemies:
-                    enemy.state = 'eatable'    
+        if self.app.map_mode == 'classic':   
+            if self.grid_pos in self.app.buffs:
+                if self.moveable():
+                    self.app.buff_timer = 10
+                    pygame.time.set_timer(pygame.USEREVENT, 1000)
+                    self.app.buffs.remove(self.grid_pos)
+                    for enemy in self.app.enemies:
+                        enemy.state = 'eatable'    
 
     def on_coin(self):
         if self.app.map_mode == 'classic':        
@@ -192,3 +243,28 @@ class Player:
                         if cell.grid_pos == self.grid_pos and cell.state == 'coin':
                             cell.state = 'not wall'
                             self.score += 1* self.multiplier
+
+#DRAW FUNCTIONS
+    def draw(self):
+        pygame.draw.circle(self.app.screen, PLAYER_COLOUR, (self.pix_pos.x, self.pix_pos.y), self.app.cell_width//2-3)
+        
+        if self.app.map_mode == 'classic':
+            for life in self.app.lives:
+                self.app.screen.blit(self.app.heart, (life.x*self.app.cell_width + self.app.cell_width//2, 
+                life.y*self.app.cell_height + self.app.cell_height//2))
+        
+        elif self.alg == 'a*':
+            if len(self.routes) != 0:    
+                for cell in self.routes:
+                    pygame.draw.circle(self.app.screen, RED,
+                        (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
+                        cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)
+            else: return
+
+        else: 
+            for route in self.routes:
+                colour = route[1]
+                for cell in route[0]:
+                    pygame.draw.circle(self.app.screen, colour,
+                    (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
+                    cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)

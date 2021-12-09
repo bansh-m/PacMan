@@ -5,10 +5,10 @@ from settings import*
 vec = pygame.math.Vector2
 
 class Enemy:
-    def __init__(self, app, pos, indx, lvl = 'random'):
+    def __init__(self, app, pos, indx):
         self.app = app
         self.indx = indx
-        self.lvl = lvl
+        self.lvl = 'random'
         self.grid_pos = pos
         self.start_pos = [pos.x, pos.y]
         self.direction = vec(0, 0)
@@ -38,10 +38,16 @@ class Enemy:
             self.get_random_direction() 
 
     def can_move(self):
-        if self.app.map_mode == 'classic' or 'shining':
+        if self.app.map_mode == 'classic':
             if vec(self.grid_pos + self.direction) in self.app.walls:
                 return False
             return True   
+
+        if self.app.map_mode == 'shining':
+            if vec(self.grid_pos + self.direction) in self.app.walls:
+                return False
+            return True   
+
         if self.app.map_mode == 'random':
             for cell in self.app.cells:
                 if cell.grid_pos == vec(self.grid_pos + self.direction):
@@ -93,11 +99,11 @@ class Enemy:
             self.grid_pos.y*self.app.cell_height + self.app.cell_height//2)
 
     def draw(self):
-        pygame.draw.circle(self.app.screen, self.colour, (self.pix_pos.x, self.pix_pos.y), self.app.cell_width//2-3)
+        pygame.draw.circle(self.app.screen, self.get_colour(), (self.pix_pos.x, self.pix_pos.y), self.app.cell_width//2-3)
 
     def set_speed(self):
         if self.state == 'eatable':
-            self.speed = 3
+            self.speed = 2
         else:
             self.speed = 3
         
