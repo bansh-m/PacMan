@@ -13,6 +13,7 @@ class Cell:
         self.right_cell = None
         self.down_cell = None
         self.neighbors = []
+        self.coins = []
         self.state = state
 
     def cell_connect(self):
@@ -38,28 +39,15 @@ class Cell:
                         self.down_cell = cell
                         self.neighbors.append(cell)
 
-    # def get_neighbors(self):
-    #     if self.left_cell != None:
-    #         return self.left_cell
-    #     if self.up_cell != None:
-    #         return self.up_cell
-    #     if self.right_cell != None:
-    #         return self.right_cell
-    #     if self.down_cell != None:
-    #         return self.down_cell
-
-    # def get_neighbors(self):
-    #     if self.left_cell in self.app.cells:
-    #         self.neighbors.append(self.left_cell)
-    #     if self.up_cell in self.app.cells:
-    #         self.neighbors.append(self.up_cell)
-    #     if self.right_cell in self.app.cells:
-    #         self.neighbors.append(self.right_cell)
-    #     if self.down_cell in self.app.cells:
-    #         self.neighbors.append(self.down_cell)
-
     def return_neighbors(self):
         return self.neighbors
+
+    def return_roads(self):
+        roads = []
+        for neighbor in self.neighbors:
+            if neighbor.state != 'wall':
+                roads.append(neighbor)
+        return roads
 
     def set_state(self):
         if self.state == None:
@@ -79,6 +67,7 @@ class Cell:
                 if neighbor_wall > 1:
                     neighbor.state = 'coin'
                     neighbor_wall -= 1
+
                 
 
             

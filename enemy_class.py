@@ -50,22 +50,30 @@ class Enemy:
                             frontier.append(neighbor)
                             came_from[neighbor] = current
         current = target 
-        path = [current]
         while current != start: 
             current = came_from[current]    
             self.path.append(current)
-        self.path.pop()
+        if self.path:        
+            self.path.pop()
 
     def curr_cell(self):
         for cell in self.app.cells:
             if cell.grid_pos == self.grid_pos:
                 return cell
 
+    def curr_cells(self):
+        cells = []
+        for enemy in self.app.enemies:
+            cells.append(enemy.curr_cell)
+        return cells
+
     def get_bfs_direction(self):
         self.path.clear()
         self.bfs(self.curr_cell(), self.app.player.curr_cell())
-        self.direction = self.path.pop().grid_pos - self.grid_pos
+        if self.path:
+            self.direction = self.path.pop().grid_pos - self.grid_pos
         
+    
 
     def move(self):
         if self.lvl == 'random':
@@ -137,18 +145,18 @@ class Enemy:
     def draw(self):
         pygame.draw.circle(self.app.screen, self.get_colour(), (self.pix_pos.x, self.pix_pos.y), self.app.cell_width//2-3)
 
-        if self.lvl == 'smart':
-            if len(self.path) != 0:    
-                for cell in self.path:
-                    pygame.draw.circle(self.app.screen, self.get_colour(),
-                        (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
-                        cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)
+        # if self.lvl == 'smart':
+        #     if len(self.path) != 0:    
+        #         for cell in self.path:
+        #             pygame.draw.circle(self.app.screen, self.get_colour(),
+        #                 (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
+        #                 cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 3)
 
     def set_speed(self):
         if self.state == 'eatable':
-            self.speed = 2
+            self.speed = 1
         else:
-            self.speed = 3
+            self.speed = 2
         
     def get_colour(self):
         if self.state == 'origin':    
@@ -160,6 +168,7 @@ class Enemy:
                 return LIGHT_BLUE
             elif self.indx == 3:
                 return RED
+            else: return GREEN
         else:
             return (154, 205, 50)
     

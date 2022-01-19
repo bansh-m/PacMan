@@ -23,8 +23,6 @@ PURPLE = (191, 0, 255)
 GREEN = (76, 187, 23)
 BROWN = (75, 54, 33)
 
-
-
 # FONT SETTINGS 
 END_TEXT_SIZE = 25
 START_TEXT_SIZE = 42    
@@ -34,4 +32,4 @@ START_FONT = 'arial black'
 PLAYER_START_POS = 0
 
 #DIRECTIONS
-UP, LEFT, DOWN, RIGHT = vec(0, -1), vec(-1, 0), vec(0, 1), vec(1, 0)
+UP, LEFT, DOWN, RIGHT, STOP = vec(0, -1), vec(-1, 0), vec(0, 1), vec(1, 0), vec(0, 0)

@@ -1,5 +1,6 @@
 import pygame, random
 from settings import *
+from timer import Timer
 
 vec = pygame.math.Vector2
 
@@ -11,24 +12,35 @@ class Player:
         self.direction = vec(0,0)
         self.stored_direction = None
         self.able_to_move = True
-        self.speed = 3
+        self.speed = 2
         self.lives = 4
         self.score = 0
         self.multiplier = 1
         self.routes = []
         self.alg = alg
-        self.targ = self.curr_cell()
-        
+        self.timer = Timer()
+        self.max = 100000000
+        self.min = -100000000
+        self.depth = 2
+        self.game_state = {}
+        self.successor_score = 0
+        self.successor_coins = []
+
     def update(self):
         if self.alg != None:
+            self.timer.start()
             self.get_path()
+            self.timer.stop()
         if self.able_to_move: 
             self.pix_pos += self.direction*self.speed
             self.grid_to_pix_pos()
             self.on_coin()
             self.on_buff()
         if self.moveable():
-            if self.alg == 'a*':
+            if self.alg == 'minimax' or self.alg == 'expectimax':
+                if self.routes:
+                    self.stored_direction = self.routes[0].grid_pos - self.grid_pos
+            elif self.alg == 'a*':
                 if self.routes:    
                     self.stored_direction = self.routes.pop().grid_pos - self.grid_pos
             if self.stored_direction != None:
@@ -37,12 +49,15 @@ class Player:
 
     def set_alg(self):
         if self.alg == 'bfs':
+            print("bfs search time -", "%.5f" % self.timer.elapsed)
             self.alg = 'dfs'
             print('dfs')
         elif self.alg == 'dfs': 
+            print("dfs search time -", "%.5f" % self.timer.elapsed)
             self.alg = 'ucs'
             print('ucs')
         elif self.alg == 'ucs': 
+            print("ucs search time -", "%.5f" % self.timer.elapsed)
             self.alg = 'bfs'
             print('bfs')
 
@@ -137,12 +152,200 @@ class Player:
                         priority = new_cost + self.heuristic(target, neighbor)
                         frontier.append((neighbor, priority))
                         came_from[neighbor] = current
-        current = target 
-        path = [current]
+        current = target
         self.routes.append(target)
         while current != start:
             current = came_from[current]
             self.routes.append(current)
+
+#Minimax
+    def minimax(self, depth, current, is_max, alpha, beta, path):
+        
+        neighbors = list(set(current.return_roads()) - set(path))
+        if depth == 0 or len(neighbors) == 0:
+            return self.get_score(path)
+
+        if is_max:
+
+            best = self.min
+            best_path = path.copy()
+            placed = False
+
+            for cell in list(set(current.return_roads()) - set(path)):
+                path.append(cell)
+                val = self.minimax(depth - 1, cell, False, alpha, beta, path)
+                best = max(best, val[0])
+                if best == val[0]:
+                    if placed:
+                        best_path.pop()
+                    best_path.append(cell)
+                    placed = True
+                path.remove(cell)
+                alpha = max(alpha, best)
+                if beta <= alpha:
+                    break
+                
+            return best, best_path
+
+        else:
+            best = self.max
+            best_path = path.copy()
+            placed = False
+
+            for cell in list(set(current.return_roads()) - set(path)):
+                path.append(cell)
+                val = self.minimax(depth - 1, cell, True, alpha, beta, path)
+                best = min(best, val[0])
+                if best == val[0]:
+                    if placed:
+                        best_path.pop()
+                    best_path.append(cell)
+                    placed = True
+                path.remove(cell)
+                beta = min(beta, best)
+                if beta <= alpha:
+                    break
+
+            return best, best_path
+
+    def get_score(self, path):
+        priority = 0
+        for cell in path:
+            if cell.state == 'coin':
+                priority += 10
+            if cell.state == 'buff':
+                priority += 25
+            elif cell.state == 'empty':
+                priority -= 5
+            for enemy in self.app.enemies:
+                if enemy.grid_pos == cell.grid_pos:
+                    priority -= 100
+        
+        return priority, path
+
+#MINMAX#2
+
+    def current_game_state(self):
+        for enemy in self.app.enemies:
+            self.game_state[enemy.indx] = next(cell for cell in self.app.cells if cell.grid_pos == enemy.grid_pos)
+        self.game_state[4] = self.curr_cell()
+    
+    def successor_game_state(self, agent_indx, cell):  
+        self.game_state[agent_indx] = cell
+        if agent_indx == 4:
+            if cell.state == 'empty':
+                self.successor_score -= 10
+            elif cell.state == 'coin':
+                self.successor_score += 10
+        return self.game_state
+
+    def minmax(self, game_state):
+
+        PACMAN = 4
+        def max_agent(game_state, depth, alpha, beta):
+            cells = game_state[PACMAN].return_roads()
+            best_score = self.min
+            score = best_score
+            best_cell = game_state[PACMAN]
+            for cell in cells:
+                score = min_agent(self.successor_game_state(PACMAN, cell), depth, 1, alpha, beta)
+                if score > best_score:
+                    best_score = score
+                    best_cell = cell
+                alpha = max(alpha, best_score)
+                if best_score > beta:
+                    self.current_game_state()
+                    return best_score
+            if depth == 0:
+                print(best_score)
+                return best_cell
+            else:
+                return best_score
+
+        def min_agent(game_state, depth, ghost_indx, alpha, beta):
+            next_agent = ghost_indx + 1
+            if ghost_indx == 3:
+                next_agent = PACMAN
+            cells = game_state[ghost_indx].return_roads()
+            best_score = self.max
+            score = best_score
+            for cell in cells:
+                if next_agent == PACMAN:
+                    if depth == self.depth - 1:
+                        score = self.evaluationFunction(self.successor_game_state(ghost_indx, cell))
+                    else:
+                        score = max_agent(self.successor_game_state(ghost_indx, cell), depth + 1, alpha, beta)
+                else:
+                    score = min_agent(self.successor_game_state(ghost_indx, cell), depth, next_agent, alpha, beta)
+                if score < best_score:
+                    best_score = score
+                beta = min(beta, best_score)
+                if best_score < alpha:
+                    return best_score
+            return best_score
+        
+        return max_agent(game_state, 0, self.min, self.max)
+    
+    def evaluationFunction(self, game_state):
+        score = self.successor_score
+        self.successor_score = 0
+        p_pos = game_state[4]
+        
+        def closest_dot():
+            distances = []
+            for coin in self.app.coins:
+                distances.append(self.manhattanDistance(coin, p_pos))
+            return min(distances) if len(distances) > 0 else 1
+
+        def closest_ghost():
+            distances = []
+            for key in game_state:
+                if key < 4:
+                    ghost = game_state[key]
+                    distances.append(self.manhattanDistance(ghost, p_pos))
+            return min(distances)
+        
+        # score = score * 2 if closest_dot() < closest_ghost() + 3 else score
+        return score
+
+    def manhattanDistance(self, target, goal):
+        return abs(target.grid_pos.x - goal.grid_pos.x) + abs(target.grid_pos.y - goal.grid_pos.y)
+
+#EXPECTIMAX
+    def expectimax(self, depth, current, path, is_max):
+        neighbors = list(set(current.return_roads()) - set(path))
+        if depth == 0 or len(neighbors) == 0:
+            return self.get_score(path)
+
+        if is_max:
+            best = self.min
+            best_path = path.copy()
+            placed = False
+            
+            for cell in current.return_roads():
+                path.append(cell)
+                val = self.expectimax(depth-1, cell, path, False)
+                if best < val[0]:
+                    if placed:
+                        best_path.pop()
+                    best_path.append(cell)
+                    placed = True
+                    best = val[0]
+                path.remove(cell)
+            return best, best_path
+        else:
+            best = 0
+            best_path = path.copy()
+            count = 0
+
+            for cell in current.return_roads():
+                path.append(cell)
+                count += 1
+                best += self.expectimax(depth - 1, cell, path, True)[0]
+                path.remove(cell)
+            if count != 0:
+                best = best/count
+            return best, best_path
 
 #POS FUNCTIONS   
     def grid_to_pix_pos(self):
@@ -182,8 +385,20 @@ class Player:
                 self.random_target()
                 self.a_star(self.curr_cell(), self.targ)
                 # self.routes.pop()
+        
+        elif self.alg == 'expectimax':
+            self.routes.clear()
+            _, path = self.expectimax(5, start, [start], True)
+            self.routes.append(path[1])
+
+        elif self.alg == 'minimax':
+            self.routes.clear()
+            # cost, path = self.minimax(3, start, True, self.min, self.max, [start])
+            self.current_game_state()
+            path = self.minmax(self.game_state)
+            self.routes.append(path)
           
-        elif self.alg != 'a*':
+        else:
             self.routes.clear()
             for enemy in self.app.enemies:
                 target = next(cell for cell in self.app.cells if cell.grid_pos == enemy.grid_pos)
@@ -195,17 +410,12 @@ class Player:
                     self.routes.append([self.usc(start, target), enemy.colour])
 
     def can_move(self):
-        if self.app.map_mode == 'classic':
-            if vec(self.grid_pos + self.direction) in self.app.walls:
-                return False
-            return True   
-
         if self.app.map_mode == 'shining':
             if vec(self.grid_pos + self.direction) in self.app.walls:
                 return False
             return True
         
-        elif self.app.map_mode == 'random':
+        elif self.app.map_mode == 'random' or self.app.map_mode == 'classic':
             for cell in self.app.cells:
                 if cell.grid_pos == vec(self.grid_pos + self.direction):
                     if cell.state == 'wall':
@@ -232,16 +442,17 @@ class Player:
                         enemy.state = 'eatable'    
 
     def on_coin(self):
-        if self.app.map_mode == 'classic':        
+        if self.app.map_mode == 'shining':        
             if self.grid_pos in self.app.coins:
                 if self.moveable():
                     self.app.coins.remove(self.grid_pos)
                     self.score += 1* self.multiplier
-        elif self.app.map_mode == 'random':
+        
+        elif self.app.map_mode == 'random' or self.app.map_mode == 'classic':
             if self.moveable():
                 for cell in self.app.cells:
                         if cell.grid_pos == self.grid_pos and cell.state == 'coin':
-                            cell.state = 'not wall'
+                            cell.state = 'empty'
                             self.score += 1* self.multiplier
 
 #DRAW FUNCTIONS
@@ -253,14 +464,20 @@ class Player:
                 self.app.screen.blit(self.app.heart, (life.x*self.app.cell_width + self.app.cell_width//2, 
                 life.y*self.app.cell_height + self.app.cell_height//2))
         
-        elif self.alg == 'a*':
+        if self.alg == 'a*':
             if len(self.routes) != 0:    
                 for cell in self.routes:
-                    pygame.draw.circle(self.app.screen, RED,
+                    pygame.draw.circle(self.app.screen, YELLOW,
                         (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
                         cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)
 
-        else: 
+        if self.alg == 'minimax':
+             for cell in self.routes:
+                    pygame.draw.circle(self.app.screen, YELLOW,
+                        (cell.grid_pos.x*self.app.cell_width + self.app.cell_height//2, 
+                        cell.grid_pos.y*self.app.cell_width + self.app.cell_height//2), 5)
+
+        if self.alg == 'bfs' or self.alg == 'dfs' or self.alg == 'ucs': 
             for route in self.routes:
                 colour = route[1]
                 for cell in route[0]:
